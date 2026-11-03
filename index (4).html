@@ -1,0 +1,1476 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Policy Reader – find unfair clauses in Terms of Service</title>
+<meta name="description" content="Paste a Terms of Service or usage policy and see which clauses may be unfair to you. The model runs in your browser.">
+<meta name="author" content="Layan Alshedokhi">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<script>
+  // Apply the saved theme before the page paints (default: light)
+  try { const t = localStorage.getItem("pr-theme"); if (t === "dark") document.documentElement.dataset.theme = "dark"; } catch (e) {}
+</script>
+<style>
+:root {
+  --bg: #EEF0FA;
+  --surface: #FFFFFF;
+  --surface-2: #F3F4FB;
+  --surface-doc: #FBFBFE;
+  --border: #DEE1F0;
+  --border-soft: #E8EAF5;
+  --border-strong: #D3D7EA;
+  --ink: #1E2240;
+  --ink-doc: #262A44;
+  --ink-body: #353A58;
+  --muted: #545A7A;
+  --accent: #4A4FD1;
+  --accent-hover: #3C41B8;
+  --accent-text: #3F44C2;
+  --accent-soft: #E6E7FB;
+  --on-accent: #FFFFFF;
+  --meter: #E4E6F3;
+
+  --high: #A9230D;  --high-line: #EC3013;  --high-bg: #FDECE8;  --high-border: #F8C3B8;  --high-rail: #EC3013;  --high-sub: #6E2A20;
+  --medium: #8C4334; --medium-line: #FF9783; --medium-bg: #FFF2EF; --medium-border: #FFD3CA; --medium-rail: #FF9783; --medium-sub: #6B3E35;
+  --low: #5B5757;   --low-line: #9B9797;   --low-bg: #F3F2F2;   --low-border: #DEDBDB;   --low-rail: #9B9797;   --low-sub: #4A4747;
+  --high-solid: #D52A10;  --high-on-solid: #FFFFFF;  --high-num: #D52A10;
+  --medium-solid: #FF9783; --medium-on-solid: #5A231A; --medium-num: #C4593F;
+  --low-solid: #9B9797;   --low-on-solid: #1F1D1D;   --low-num: #7E7A7A;
+  --card-bg: #F4F4F6;
+
+  --backdrop: rgba(30, 34, 64, 0.55);
+  --r-pane: 18px;
+  --r-card: 14px;
+  --r-control: 10px;
+  --sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+}
+:root[data-theme="dark"] {
+  --bg: #151933;
+  --surface: #1D2242;
+  --surface-2: #232849;
+  --surface-doc: #1A1F3C;
+  --border: #30375E;
+  --border-soft: #2A3054;
+  --border-strong: #3A4170;
+  --ink: #E6E8F5;
+  --ink-doc: #DADCEC;
+  --ink-body: #C3C6DD;
+  --muted: #A6ABCB;
+  --accent: #8F93F2;
+  --accent-hover: #A5A8F6;
+  --accent-text: #A9ACF7;
+  --accent-soft: #2C3263;
+  --on-accent: #12152A;
+  --meter: #343B66;
+
+  --high: #FF8E78;  --high-line: #F0462A;  --high-bg: #3E1E1A;  --high-border: #6A2C22;  --high-rail: #F0462A;  --high-sub: #E9C4BC;
+  --medium: #FFC4B8; --medium-line: #FF9783; --medium-bg: #3A2A27; --medium-border: #644038; --medium-rail: #FF9783; --medium-sub: #E6CEC8;
+  --low: #D2CECE;   --low-line: #9B9797;   --low-bg: #2C2D38;   --low-border: #444554;   --low-rail: #9B9797;   --low-sub: #C4C1C1;
+  --high-solid: #F0462A;  --high-on-solid: #1E0B07;  --high-num: #FF8E78;
+  --medium-solid: #FF9783; --medium-on-solid: #2A0F0A; --medium-num: #FFB4A5;
+  --low-solid: #9B9797;   --low-on-solid: #141313;   --low-num: #C4C1C1;
+  --card-bg: #232849;
+
+  --backdrop: rgba(5, 7, 18, 0.7);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent-text); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- App frame ---------- */
+.app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px;
+  padding: 12px 28px; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+.brand-mark {
+  width: 38px; height: 38px; border-radius: 11px; background: var(--accent); color: var(--on-accent);
+  display: flex; align-items: center; justify-content: center; flex: none;
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+.brand-name { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+.brand-tag { color: var(--muted); font-size: 13px; }
+
+.tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; }
+.tab { min-height: 38px; padding: 0 16px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 600; }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+
+.model-status {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px;
+  border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 13px; font-weight: 600;
+}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); flex: none; }
+.status-bar { width: 64px; height: 4px; border-radius: 2px; background: var(--meter); overflow: hidden; flex: none; }
+.status-bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+.model-status[data-state="ready"] { background: var(--accent-soft); color: var(--accent-text); }
+.model-status[data-state="ready"] .status-dot { background: var(--accent); }
+.model-status[data-state="error"] { background: var(--high-bg); color: var(--high); }
+.model-status[data-state="error"] .status-dot { background: var(--high-line); }
+.model-status[data-state="ready"] .status-bar, .model-status[data-state="error"] .status-bar { display: none; }
+
+.ghost-btn {
+  min-height: 40px; padding: 0 16px; border-radius: var(--r-control);
+  border: 1px solid var(--border-strong); background: var(--surface); font-weight: 600; font-size: 14px;
+}
+.ghost-btn:hover { background: var(--surface-2); }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: var(--r-control); border: 1px solid var(--border-strong);
+  background: var(--surface); display: inline-flex; align-items: center; justify-content: center;
+}
+.icon-btn:hover { background: var(--surface-2); }
+.icon-sun { display: none; }
+:root[data-theme="dark"] .icon-sun { display: block; }
+:root[data-theme="dark"] .icon-moon { display: none; }
+
+/* ---------- Workspace ---------- */
+.workspace { min-height: 0; padding: 22px 28px; display: grid; gap: 22px; }
+.workspace[hidden] { display: none; }
+#analyzeView { grid-template-columns: minmax(0, 1.3fr) minmax(400px, 1fr); }
+#compareView { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(380px, 1.15fr); }
+
+.pane {
+  min-height: 0; display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-pane); overflow: hidden;
+}
+.pane-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 22px; border-bottom: 1px solid var(--border-soft); }
+.pane-title { margin: 0; font-size: 16px; font-weight: 700; margin-right: auto; }
+.pane-meta { color: var(--muted); font-size: 13px; }
+.pane-body { flex: 1; min-height: 0; overflow: auto; padding: 18px 22px; }
+.pane-body.doc-body { padding: 26px 30px; background: var(--surface-doc); }
+.pane-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 22px; border-top: 1px solid var(--border-soft); }
+.pane-foot .spacer { margin-right: auto; }
+.letter {
+  width: 28px; height: 28px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-text);
+  font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: none;
+}
+
+.policy-input {
+  width: 100%; height: 100%; min-height: 240px; resize: none;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+  padding: 16px 18px; font-family: var(--serif); font-size: 17px; line-height: 1.7; color: var(--ink-doc);
+}
+.policy-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.policy-input::placeholder { color: var(--muted); }
+
+.primary-btn {
+  min-height: 48px; padding: 0 28px; border: 0; border-radius: 12px;
+  background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 15px;
+}
+.primary-btn:hover { background: var(--accent-hover); }
+.primary-btn:disabled { opacity: 0.6; cursor: progress; }
+.text-btn {
+  min-height: 40px; padding: 0 12px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--accent-text); font-weight: 600; font-size: 14px;
+}
+.text-btn:hover { background: var(--accent-soft); }
+.text-btn.filled { background: var(--accent-soft); min-height: 36px; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+.sample-select {
+  min-height: 40px; padding: 0 34px 0 12px; border-radius: 8px; border: 1px solid transparent;
+  background: var(--accent-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233F44C2' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  color: var(--accent-text); font-weight: 600; font-size: 14px; cursor: pointer; appearance: none;
+}
+.sample-select:hover { border-color: var(--border-strong); }
+.sample-select { display: inline-flex; align-items: center; text-align: left; }
+.sample-picker { position: relative; }
+.sample-list {
+  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 30; min-width: 100%; width: max-content;
+  margin: 0; padding: 6px; list-style: none; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 28px rgba(30, 34, 64, 0.14);
+}
+.sample-list:focus { outline: none; }
+.sample-list li {
+  min-height: 40px; padding: 0 14px; display: flex; align-items: center; border-radius: 8px;
+  font-size: 14px; font-weight: 500; color: var(--ink); background: var(--surface); cursor: pointer; white-space: nowrap;
+}
+.sample-list li:hover, .sample-list li.is-active { background: var(--accent-soft); color: var(--accent-text); }
+.sample-list li[aria-selected="true"] { font-weight: 700; }
+.sample-list:focus-visible li.is-active { box-shadow: inset 0 0 0 2px var(--accent); }
+.source-note { margin: 0; padding: 10px 22px; font-size: 13px; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border-soft); }
+.source-note[hidden] { display: none; }
+
+#results { display: flex; flex-direction: column; gap: 16px; }
+#results:empty { display: none; }
+
+.kw { color: inherit; border-radius: 3px; padding: 0 2px; }
+.kw-1.high { background: var(--high-solid); color: var(--high-on-solid); }
+.kw-1.medium { background: var(--medium-solid); color: var(--medium-on-solid); }
+.kw-1.low { background: var(--low-solid); color: var(--low-on-solid); }
+.kw-2.high { background: var(--high-bg); box-shadow: inset 0 -2px 0 var(--high-line); }
+.kw-2.medium { background: var(--medium-bg); box-shadow: inset 0 -2px 0 var(--medium-line); }
+.kw-2.low { background: var(--low-bg); box-shadow: inset 0 -2px 0 var(--low-line); }
+.kw-3 { background: transparent; box-shadow: inset 0 -2px 0 var(--border-strong); }
+.kw-note { margin: -2px 0 0; font-size: 13px; color: var(--muted); }
+.card-foot .text-btn.why-btn { margin-left: 0; padding-left: 0; }
+.why-btn:hover { background: transparent; text-decoration: underline; }
+.form-error { color: var(--high); font-size: 13px; font-weight: 600; }
+
+/* ---------- Annotated document ---------- */
+.doc { max-width: 70ch; display: flex; flex-direction: column; gap: 14px; font-family: var(--serif); font-size: 18px; line-height: 1.85; color: var(--ink-doc); }
+.doc h3 { margin: 6px 0 -10px; font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--muted); }
+.doc p { margin: 0; padding-left: 16px; border-left: 3px solid transparent; }
+.doc p.has-low { border-left-color: var(--low-rail); }
+.doc p.has-medium { border-left-color: var(--medium-rail); }
+.doc p.has-high { border-left-color: var(--high-rail); }
+.mark {
+  border: 0; padding: 1px 3px; margin: 0; border-radius: 4px;
+  font: inherit; line-height: inherit; text-align: inherit; color: inherit; display: inline;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.mark-high { background: var(--high-bg); box-shadow: inset 0 -2px 0 var(--high-line); }
+.mark-medium { background: var(--medium-bg); box-shadow: inset 0 -2px 0 var(--medium-line); }
+.mark-low { background: var(--low-bg); box-shadow: inset 0 -2px 0 var(--low-line); }
+.mark.is-weak { background: transparent; }
+.mark.is-active { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- Report ---------- */
+.report { display: flex; flex-direction: column; gap: 16px; }
+.overall { display: flex; align-items: center; gap: 18px; padding: 18px; border-radius: 16px; border: 1px solid; }
+.overall.level-high { background: var(--high-bg); border-color: var(--high-border); }
+.overall.level-medium { background: var(--medium-bg); border-color: var(--medium-border); }
+.overall.level-low, .overall.level-safe { background: var(--low-bg); border-color: var(--low-border); }
+.ring { width: 88px; height: 88px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.ring-inner {
+  width: 62px; height: 62px; border-radius: 50%; background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+}
+.ring-inner strong { font-size: 24px; font-weight: 700; }
+.ring-inner span { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.overall-text { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.overall-level { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+.overall-sub { margin: 0; font-size: 14px; }
+.overall-score { margin: 0; font-size: 13px; }
+.level-high .overall-level { color: var(--high); }
+.level-medium .overall-level { color: var(--medium); }
+.level-low .overall-level, .level-safe .overall-level { color: var(--low); }
+.level-high .overall-sub, .level-high .overall-score { color: var(--high-sub); }
+.level-medium .overall-sub, .level-medium .overall-score { color: var(--medium-sub); }
+.level-low .overall-sub, .level-low .overall-score, .level-safe .overall-sub, .level-safe .overall-score { color: var(--low-sub); }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); font-size: 14px; font-weight: 600; color: var(--muted);
+}
+.chip.high { background: var(--high-bg); border-color: var(--high-border); color: var(--high); }
+.chip.medium { background: var(--medium-bg); border-color: var(--medium-border); color: var(--medium); }
+.chip.low { background: var(--low-bg); border-color: var(--low-border); color: var(--low); }
+.chip.high[aria-pressed="true"] { background: var(--high-solid); border-color: var(--high-solid); color: var(--high-on-solid); }
+.chip.medium[aria-pressed="true"] { background: var(--medium-solid); border-color: var(--medium-solid); color: var(--medium-on-solid); }
+.chip.low[aria-pressed="true"] { background: var(--low-solid); border-color: var(--low-solid); color: var(--low-on-solid); }
+.chip:disabled { opacity: 0.45; cursor: default; }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.dot.high { background: var(--high-line); }
+.dot.medium { background: var(--medium-line); }
+.dot.low { background: var(--low-line); }
+
+
+.cards { display: flex; flex-direction: column; gap: 12px; }
+.cards > .card-wrap { container-type: inline-size; container-name: card; min-width: 0; }
+.card {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 clamp(14px, 4cqi, 26px);
+  padding: clamp(16px, 4cqi, 24px) clamp(16px, 4.5cqi, 28px) 18px;
+  border-radius: var(--r-card); background: var(--card-bg); overflow: hidden;
+}
+.card.is-active { box-shadow: 0 0 0 2px var(--ink); }
+.card-num {
+  min-width: 2ch; font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums; padding-top: 0;
+}
+.card.level-high .card-num { color: var(--high-num); }
+.card.level-medium .card-num { color: var(--medium-num); }
+.card.level-low .card-num { color: var(--low-num); }
+.card-main { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.card-main > * { min-width: 0; overflow-wrap: anywhere; }
+.card-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 36px; }
+.badge {
+  display: inline-flex; align-items: center; flex: none; height: 30px; padding: 0 14px;
+  border-radius: 2px; font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+}
+.badge.high { background: var(--high-solid); color: var(--high-on-solid); }
+.badge.medium { background: var(--medium-solid); color: var(--medium-on-solid); }
+.badge.low { background: var(--low-solid); color: var(--low-on-solid); }
+.card-type { margin: 6px 0 0; font-size: 25px; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; }
+.confidence { display: inline-flex; align-items: center; gap: 10px; flex: none; max-width: 100%; font-size: 14px; color: var(--muted); white-space: nowrap; }
+.meter { width: 60px; height: 3px; background: var(--border-strong); overflow: hidden; flex: none; }
+.meter span { display: block; height: 100%; background: var(--ink); }
+.card-explain { margin: 0; font-size: 16px; line-height: 1.5; color: var(--ink); }
+.card-quote {
+  margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--surface);
+  font-family: var(--serif); font-size: 15.5px; line-height: 1.6; color: var(--ink-doc);
+}
+.card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.note { font-size: 13px; color: var(--muted); }
+.note strong { color: var(--ink); font-weight: 600; }
+.card-foot .text-btn { margin-left: auto; min-height: 34px; padding: 0 10px; }
+@container card (max-width: 420px) {
+  .card { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .card-num { font-size: 28px; }
+  .card-type { font-size: 21px; }
+}
+
+.empty { max-width: 46ch; padding: 6px 2px; }
+.empty h3 { margin: 0 0 8px; font-size: 18px; }
+.empty p { margin: 0 0 16px; color: var(--muted); }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.legend li { display: grid; grid-template-columns: 10px 1fr; gap: 10px; align-items: start; font-size: 14px; }
+.legend .dot { margin-top: 6px; width: 10px; height: 10px; }
+
+.progress-box { display: grid; gap: 10px; padding: 6px 2px; }
+.progress-box h3 { margin: 0; font-size: 17px; }
+.progress-track { height: 6px; border-radius: 3px; background: var(--meter); overflow: hidden; }
+.progress-track span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
+
+/* ---------- Compare ---------- */
+.compare-input-body { display: flex; flex-direction: column; gap: 10px; }
+.compare-input-body label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.compare-input-body .policy-input { flex: 1; font-size: 16px; background: var(--surface-doc); }
+.name-input {
+  width: 100%; min-height: 42px; padding: 0 12px; border-radius: var(--r-control);
+  border: 1px solid var(--border); background: var(--surface-doc); font-weight: 600;
+}
+.name-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.verdict { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3; letter-spacing: -0.01em; }
+.summary-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.summary-tile { padding: 14px 16px; border-radius: var(--r-card); border: 1px solid; display: flex; flex-direction: column; gap: 2px; }
+.summary-tile .name { font-size: 13px; }
+.summary-tile .lvl { font-size: 22px; font-weight: 700; }
+.summary-tile .sub { font-size: 13px; }
+.summary-tile.level-high { background: var(--high-bg); border-color: var(--high-border); }
+.summary-tile.level-medium { background: var(--medium-bg); border-color: var(--medium-border); }
+.summary-tile.level-low, .summary-tile.level-safe { background: var(--low-bg); border-color: var(--low-border); }
+.summary-tile.level-high .lvl { color: var(--high); }
+.summary-tile.level-medium .lvl { color: var(--medium); }
+.summary-tile.level-low .lvl, .summary-tile.level-safe .lvl { color: var(--low); }
+.summary-tile.level-high .name, .summary-tile.level-high .sub { color: var(--high-sub); }
+.summary-tile.level-medium .name, .summary-tile.level-medium .sub { color: var(--medium-sub); }
+.summary-tile.level-low .name, .summary-tile.level-low .sub, .summary-tile.level-safe .name, .summary-tile.level-safe .sub { color: var(--low-sub); }
+.table-wrap { overflow-x: auto; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.compare-table th, .compare-table td { padding: 9px 10px; border-bottom: 1px solid var(--border-soft); text-align: left; }
+.compare-table thead th { font-size: 13px; color: var(--muted); font-weight: 600; border-bottom-color: var(--border); }
+.compare-table tbody th { font-weight: 500; }
+.compare-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.compare-table td.worse { font-weight: 700; color: var(--high); }
+.compare-table tr.group th { padding-top: 18px; font-size: 13px; color: var(--muted); font-weight: 600; border-bottom-color: var(--border); }
+.type-cell { display: inline-flex; align-items: center; gap: 8px; }
+
+/* ---------- Footer ---------- */
+.footer {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; padding: 14px 28px;
+  background: var(--surface); border-top: 1px solid var(--border); font-size: 13px; color: var(--muted);
+}
+.credit { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.initials {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text);
+  font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; flex: none;
+}
+.credit strong { color: var(--ink); font-weight: 600; }
+.footer a { font-weight: 600; }
+
+/* ---------- About dialog ---------- */
+dialog {
+  width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 48px);
+  border: 0; border-radius: 20px; padding: 0; background: var(--surface); color: var(--ink); overflow: hidden;
+}
+dialog[open] { display: flex; flex-direction: column; }
+dialog::backdrop { background: var(--backdrop); }
+.dialog-head { display: flex; align-items: center; gap: 12px; padding: 18px 26px; border-bottom: 1px solid var(--border-soft); }
+.dialog-head h2 { margin: 0 auto 0 0; font-size: 19px; }
+.dialog-cols { display: flex; flex-wrap: wrap; min-height: 0; overflow: auto; }
+.dialog-main { flex: 1.5 1 420px; min-width: 0; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; }
+.dialog-lead { margin: 0; font-family: var(--serif); font-size: 19px; line-height: 1.6; color: var(--ink-doc); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stat { padding: 14px 16px; border-radius: var(--r-card); background: var(--surface-2); display: flex; flex-direction: column; gap: 2px; }
+.stat strong { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.stat span { font-size: 13px; color: var(--muted); }
+.dialog-section { display: flex; flex-direction: column; gap: 6px; }
+.dialog-section h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.dialog-section p, .dialog-section ul { margin: 0; font-size: 14px; color: var(--ink-body); }
+.dialog-section ul { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.level-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.level-pills span { min-height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; }
+.level-pills .high { background: var(--high-bg); color: var(--high); }
+.level-pills .medium { background: var(--medium-bg); color: var(--medium); }
+.level-pills .low { background: var(--low-bg); color: var(--low); }
+.maker { flex: 1 1 300px; min-width: 0; padding: 24px 26px; background: var(--surface-2); border-left: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 16px; }
+.maker h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.maker-id { display: flex; align-items: center; gap: 14px; }
+.maker-avatar {
+  width: 60px; height: 60px; border-radius: 50%; background: var(--accent); color: var(--on-accent);
+  font-weight: 700; font-size: 21px; display: flex; align-items: center; justify-content: center; flex: none;
+}
+.maker-name { display: flex; flex-direction: column; line-height: 1.3; }
+.maker-name strong { font-size: 18px; }
+.maker-name span { font-size: 14px; color: var(--muted); }
+.maker p { margin: 0; font-size: 14px; color: var(--ink-body); }
+.maker-links { display: flex; flex-direction: column; gap: 8px; }
+.maker-links a {
+  min-height: 44px; padding: 0 14px; border-radius: var(--r-control); background: var(--surface); border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-weight: 600; font-size: 14px;
+}
+.maker-links a:hover { border-color: var(--border-strong); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1150px) {
+  #compareView { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #compareView .compare-result { grid-column: 1 / -1; min-height: 460px; }
+}
+@media (max-width: 900px) {
+  .app { height: auto; min-height: 100vh; }
+  .topbar { padding: 12px 16px; }
+  .workspace { padding: 16px; }
+  #analyzeView, #compareView { grid-template-columns: minmax(0, 1fr); }
+  .pane { min-height: 480px; }
+  .pane-body { max-height: 70vh; }
+  .brand-tag { display: none; }
+  .footer { padding: 14px 16px; }
+  .maker { border-left: 0; border-top: 1px solid var(--border-soft); }
+  .stats { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 3h9l5 5v7"></path><path d="M15 3v5h5"></path><path d="M6 3v20h7"></path>
+          <path d="M9 11h6"></path><path d="M9 15h3"></path>
+          <path d="M19 17.5l3 1.2v2.4c0 1.6-1.3 2.6-3 3.4-1.7-.8-3-1.8-3-3.4v-2.4z"></path>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand-name">Policy Reader</span>
+        <span class="brand-tag">Find the clauses that work against you</span>
+      </span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Mode">
+      <button class="tab" role="tab" id="tabAnalyze" aria-selected="true" aria-controls="analyzeView">Analyze</button>
+      <button class="tab" role="tab" id="tabCompare" aria-selected="false" aria-controls="compareView">Compare two policies</button>
+    </div>
+    <span class="model-status" id="modelStatus" data-state="loading" role="status" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="modelStatusText">Preparing the model</span>
+      <span class="status-bar" aria-hidden="true"><span id="modelStatusBar"></span></span>
+    </span>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+      <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg>
+      <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.9 4.9l1.4 1.4"></path><path d="M17.7 17.7l1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.9 19.1l1.4-1.4"></path><path d="M17.7 6.3l1.4-1.4"></path></svg>
+    </button>
+    <button class="ghost-btn" id="aboutBtn" type="button">About</button>
+  </header>
+
+  <!-- ================= Analyze ================= -->
+  <main class="workspace" id="analyzeView" role="tabpanel" aria-labelledby="tabAnalyze">
+    <section class="pane" aria-labelledby="policyTitle">
+      <div class="pane-head">
+        <h2 class="pane-title" id="policyTitle">Policy text</h2>
+        <span class="pane-meta" id="wordCount">0 words</span>
+        <button class="text-btn filled" id="editBtn" type="button" hidden>Edit text</button>
+      </div>
+      <p class="source-note" id="sampleSource" hidden></p>
+      <div class="pane-body doc-body" id="policyBody">
+        <label for="policyInput" class="visually-hidden">Paste a Terms of Service or usage policy</label>
+        <textarea id="policyInput" class="policy-input" spellcheck="false"
+          placeholder="Paste a Terms of Service, user agreement or usage policy here."></textarea>
+        <div id="docView" class="doc" hidden></div>
+      </div>
+      <div class="pane-foot">
+        <div class="sample-picker" id="samplePicker">
+          <button type="button" id="sampleBtn" class="sample-select" aria-haspopup="listbox" aria-expanded="false" aria-controls="sampleList">
+            <span id="sampleLabel">Try a sample policy</span>
+          </button>
+          <ul id="sampleList" class="sample-list" role="listbox" aria-label="Sample policies" tabindex="-1" hidden>
+            <li role="option" id="sample-tiktok" data-value="tiktok" aria-selected="false">TikTok</li>
+            <li role="option" id="sample-spotify" data-value="spotify" aria-selected="false">Spotify</li>
+            <li role="option" id="sample-netflix" data-value="netflix" aria-selected="false">Netflix</li>
+            <li role="option" id="sample-northwind" data-value="northwind" aria-selected="false">Northwind Stream (fictional)</li>
+          </ul>
+        </div>
+        <button class="text-btn" id="clearBtn" type="button">Clear</button>
+        <span class="spacer"></span>
+        <span class="form-error" id="formError" role="alert"></span>
+        <button class="primary-btn" id="analyzeBtn" type="button">Analyze policy</button>
+      </div>
+    </section>
+
+    <section class="pane" aria-labelledby="reportTitle">
+      <div class="pane-head">
+        <h2 class="pane-title" id="reportTitle">Risk report</h2>
+        <span class="pane-meta" id="reportMeta"></span>
+      </div>
+      <div class="pane-body" id="reportBody" aria-live="polite">
+        <div class="empty">
+          <h3>Paste a policy to see its risks</h3>
+          <p>Each sentence is checked for eight types of clauses that consumer law often treats as unfair. Flagged clauses appear here as cards, sorted by risk level.</p>
+          <ul class="legend">
+            <li><span class="dot high"></span><span><strong>High risk</strong>: limits your rights or what the company owes you, or lets it cut off your account.</span></li>
+            <li><span class="dot medium"></span><span><strong>Medium risk</strong>: lets the company change the deal, remove your content, or move disputes elsewhere.</span></li>
+            <li><span class="dot low"></span><span><strong>Low risk</strong>: common clauses with a smaller direct effect on you.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= Compare ================= -->
+  <main class="workspace" id="compareView" role="tabpanel" aria-labelledby="tabCompare" hidden>
+    <section class="pane" aria-label="Policy A">
+      <div class="pane-head"><span class="letter" aria-hidden="true">A</span><h2 class="pane-title">Policy A</h2><span class="pane-meta" id="wordCountA">0 words</span></div>
+      <div class="pane-body compare-input-body">
+        <label for="nameA">Service name</label>
+        <input id="nameA" class="name-input" type="text" placeholder="e.g. Northwind Stream">
+        <label for="inputA">Policy text</label>
+        <textarea id="inputA" class="policy-input" spellcheck="false" placeholder="Paste the first policy here."></textarea>
+      </div>
+    </section>
+    <section class="pane" aria-label="Policy B">
+      <div class="pane-head"><span class="letter" aria-hidden="true">B</span><h2 class="pane-title">Policy B</h2><span class="pane-meta" id="wordCountB">0 words</span></div>
+      <div class="pane-body compare-input-body">
+        <label for="nameB">Service name</label>
+        <input id="nameB" class="name-input" type="text" placeholder="e.g. Lumen Notes">
+        <label for="inputB">Policy text</label>
+        <textarea id="inputB" class="policy-input" spellcheck="false" placeholder="Paste the second policy here."></textarea>
+      </div>
+    </section>
+    <section class="pane compare-result" aria-labelledby="compareTitle">
+      <div class="pane-head"><h2 class="pane-title" id="compareTitle">Comparison</h2></div>
+      <div class="pane-body" id="compareBody" aria-live="polite">
+        <div class="empty">
+          <h3>Compare two services side by side</h3>
+          <p>Paste two policies, then compare them to see which one asks more of you.</p>
+        </div>
+      </div>
+      <div class="pane-foot">
+        <button class="text-btn" id="compareSampleBtn" type="button">Try two samples</button>
+        <span class="spacer"></span>
+        <span class="form-error" id="compareError" role="alert"></span>
+        <button class="primary-btn" id="compareBtn" type="button">Compare policies</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span class="credit">
+      <span class="initials" aria-hidden="true">LA</span>
+      <span>Designed and built by <strong>Layan Alshedokhi</strong>, NLP capstone project at Tuwaiq Academy, 2026</span>
+    </span>
+    <a href="https://github.com/layanalshedokhi/policy-reader-NLP" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.linkedin.com/in/layan-alshedokhi" target="_blank" rel="noopener">LinkedIn</a>
+    <span>Not legal advice. Your text never leaves your browser.</span>
+  </footer>
+</div>
+
+<dialog id="aboutDialog" aria-labelledby="aboutTitle">
+  <div class="dialog-head">
+    <h2 id="aboutTitle">About Policy Reader</h2>
+    <button class="ghost-btn" type="button" id="aboutClose">Close</button>
+  </div>
+  <div class="dialog-cols">
+    <div class="dialog-main">
+      <p class="dialog-lead">Policy Reader uses RoBERTa-base, fine-tuned on UNFAIR-ToS: sentences from 50 real Terms of Service, labeled by legal experts with eight types of potentially unfair clauses.</p>
+      <div class="stats">
+        <div class="stat"><strong>0.775</strong><span>Test macro-F1, original model</span></div>
+        <div class="stat"><strong>0.762</strong><span>Test macro-F1, browser version</span></div>
+        <div class="stat"><strong>126 MB</strong><span>Quantized from 499 MB</span></div>
+      </div>
+      <div class="dialog-section">
+        <h3>How a sentence is flagged</h3>
+        <p>The model gives each sentence a probability for each clause type. A type is flagged when its probability passes a cutoff tuned for that type on validation data. After error analysis, the cutoff for “Contract by using” was lowered to 0.5 in this app; the reported scores use the original cutoffs.</p>
+      </div>
+      <div class="dialog-section">
+        <h3>How risk levels are set</h3>
+        <p>The model detects clause types, not risk levels. Each type has a fixed level by its likely effect on you. The overall level uses weighted risk points per 1,000 words, so long policies are not penalized for length alone.</p>
+        <div class="level-pills">
+          <span class="high">High: liability, termination, arbitration</span>
+          <span class="medium">Medium: change, removal, jurisdiction</span>
+          <span class="low">Low: choice of law, contract by using</span>
+        </div>
+      </div>
+      <div class="dialog-section">
+        <h3>Limits</h3>
+        <ul>
+          <li>It recognizes typical wording, not legal reasoning, so a clause with a fair justification can still be flagged.</li>
+          <li>It was trained on English consumer Terms of Service, so other kinds of documents may give less reliable results.</li>
+          <li>It finds about 3 in 4 unfair clauses, so some may be missed.</li>
+          <li>This is not legal advice.</li>
+        </ul>
+      </div>
+    </div>
+    <aside class="maker" aria-labelledby="makerTitle">
+      <h3 id="makerTitle">Who made this</h3>
+      <div class="maker-id">
+        <span class="maker-avatar" aria-hidden="true">LA</span>
+        <span class="maker-name"><strong>Layan Alshedokhi</strong><span>Student at Tuwaiq Academy</span></span>
+      </div>
+      <p>I built Policy Reader as my NLP capstone project at Tuwaiq Academy: from fine-tuning and comparing three transformer models to shipping a model that runs entirely in your browser.</p>
+      <div class="maker-links">
+        <a href="https://github.com/layanalshedokhi/policy-reader-NLP" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 19c-4 1.5-4-2-6-2.5"></path><path d="M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"></path></svg>
+          Project code on GitHub
+        </a>
+        <a href="https://www.linkedin.com/in/layan-alshedokhi" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M8 10v7"></path><path d="M8 7v.01"></path><path d="M12 17v-4a2 2 0 0 1 4 0v4"></path><path d="M12 10v7"></path></svg>
+          Connect on LinkedIn
+        </a>
+      </div>
+    </aside>
+  </div>
+</dialog>
+
+<script type="module">
+import { AutoTokenizer, AutoModelForSequenceClassification, env }
+  from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3";
+
+// ======================================================================
+// Settings
+// ======================================================================
+const MODEL_ID = "LayanSh1/policy-reader-roberta";
+const THRESHOLDS_URL = `https://huggingface.co/${MODEL_ID}/resolve/main/app_thresholds.json`;
+const MAX_LENGTH = 128;
+const BATCH_SIZE = 8;
+const MIN_WORDS = 5;          // shorter lines (headings) are not classified
+const ALSO_MIN = 0.30;        // "possibly also" lower bound
+const WEAK_BELOW = 0.70;      // confidence shown as lower
+
+env.allowLocalModels = false;
+
+// Fixed, human-written explanations (never generated)
+const CATEGORIES = {
+  "Limitation of liability": { level: "high",
+    explain: "The company limits what it has to pay you if the service causes you harm or loses your data." },
+  "Unilateral termination": { level: "high",
+    explain: "The company can close your account or stop the service whenever it wants, sometimes without a reason or notice." },
+  "Arbitration": { level: "high",
+    explain: "You give up going to court. A private arbitrator decides disputes, and you may lose the right to join a class action." },
+  "Unilateral change": { level: "medium",
+    explain: "The company can change the terms or the service later, and keeping on using it counts as accepting the change." },
+  "Content removal": { level: "medium",
+    explain: "The company can delete or block what you posted without asking or warning you first." },
+  "Jurisdiction": { level: "medium",
+    explain: "If you take legal action, you must do it in a court the company chose, which may be far from where you live." },
+  "Choice of law": { level: "low",
+    explain: "Disputes follow the law of a place the company picked, which may give you fewer protections than your local law." },
+  "Contract by using": { level: "low",
+    explain: "You are treated as agreeing to the whole contract just by using the service, without ever clicking “I agree”." },
+};
+const LEVELS = {
+  high:   { label: "High risk",   weight: 3, rank: 0 },
+  medium: { label: "Medium risk", weight: 2, rank: 1 },
+  low:    { label: "Low risk",    weight: 1, rank: 2 },
+};
+const TYPES_BY_LEVEL = Object.keys(CATEGORIES)
+  .sort((a, b) => LEVELS[CATEGORIES[a].level].rank - LEVELS[CATEGORIES[b].level].rank);
+
+// ======================================================================
+// Theme toggle (starts light, remembers the visitor's choice)
+// ======================================================================
+const themeBtn = document.getElementById("themeBtn");
+function syncThemeButton() {
+  const dark = document.documentElement.dataset.theme === "dark";
+  const label = dark ? "Switch to light mode" : "Switch to dark mode";
+  themeBtn.setAttribute("aria-label", label);
+  themeBtn.title = label;
+}
+themeBtn.addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("pr-theme", next); } catch (e) {}
+  syncThemeButton();
+});
+syncThemeButton();
+
+// ======================================================================
+// Model loading (starts in the background as soon as the page opens)
+// ======================================================================
+const statusEl = document.getElementById("modelStatus");
+const statusText = document.getElementById("modelStatusText");
+const statusBar = document.getElementById("modelStatusBar");
+const fileProgress = {};
+let progressListener = null;
+
+function onDownloadProgress(p) {
+  if (p.status === "progress" && p.total) {
+    fileProgress[p.file] = { loaded: p.loaded, total: p.total };
+    let loaded = 0, total = 0;
+    for (const f of Object.values(fileProgress)) { loaded += f.loaded; total += f.total; }
+    const pct = Math.round((loaded / total) * 100);
+    statusText.textContent = `Downloading the model, ${pct}%`;
+    statusBar.style.width = pct + "%";
+    if (progressListener) progressListener(pct);
+  }
+}
+
+let modelPromise = null;
+function loadModel() {
+  if (!modelPromise) {
+    statusEl.dataset.state = "loading";
+    statusText.textContent = "Preparing the model";
+    modelPromise = (async () => {
+      const [tokenizer, model, thresholds] = await Promise.all([
+        AutoTokenizer.from_pretrained(MODEL_ID, { progress_callback: onDownloadProgress }),
+        AutoModelForSequenceClassification.from_pretrained(MODEL_ID, { dtype: "q8", progress_callback: onDownloadProgress }),
+        fetch(THRESHOLDS_URL).then((r) => {
+          if (!r.ok) throw new Error("Could not download the cutoff file.");
+          return r.json();
+        }),
+      ]);
+      const id2label = model.config.id2label;
+      const labels = Object.keys(id2label).sort((a, b) => a - b).map((k) => id2label[k]);
+      statusEl.dataset.state = "ready";
+      statusText.textContent = "Model ready, runs on your device";
+      return { tokenizer, model, thresholds, labels };
+    })().catch((err) => {
+      console.error(err);
+      statusEl.dataset.state = "error";
+      statusText.textContent = "Model did not load. Check your connection";
+      modelPromise = null;
+      throw err;
+    });
+  }
+  return modelPromise;
+}
+loadModel().catch(() => {});
+
+// ======================================================================
+// Text preparation
+// ======================================================================
+const segmenter = "Segmenter" in Intl ? new Intl.Segmenter("en", { granularity: "sentence" }) : null;
+
+function splitSentences(paragraph) {
+  if (segmenter) {
+    return [...segmenter.segment(paragraph)].map((s) => s.segment.trim()).filter(Boolean);
+  }
+  return paragraph.split(/(?<=[.!?;])\s+(?=[A-Z0-9(“"])/).map((s) => s.trim()).filter(Boolean);
+}
+
+function cleanText(text) {
+  return text
+    .replace(/<[^>]+>/g, " ")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/\r/g, "")
+    .replace(/[ \t ]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+// Match the training data: lowercase, punctuation separated by spaces
+function normalizeForModel(s) {
+  return s.toLowerCase()
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/(\w)n't\b/g, "$1 n't")
+    .replace(/([.,;:!?()\[\]"])/g, " $1 ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const countWords = (t) => (t.trim() ? t.trim().split(/\s+/).length : 0);
+
+function parsePolicy(raw) {
+  const text = cleanText(raw);
+  const lines = text.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+  const paragraphs = [];
+  const sentences = [];
+  for (const line of lines) {
+    const isHeading = countWords(line) < MIN_WORDS && !/[.!?;:]$/.test(line);
+    const pi = paragraphs.length;
+    paragraphs.push({ heading: isHeading, text: line });
+    if (isHeading) continue;
+    for (const s of splitSentences(line)) {
+      sentences.push({ id: "s" + sentences.length, para: pi, text: s, check: countWords(s) >= MIN_WORDS });
+    }
+  }
+  return { paragraphs, sentences, words: countWords(text) };
+}
+
+const sigmoid = (x) => 1 / (1 + Math.exp(-x));
+const nextFrame = () => new Promise((r) => setTimeout(r, 0));
+
+// ======================================================================
+// Analysis
+// ======================================================================
+// Run the model on a list of texts; returns one probability array per text
+async function runProbs(texts, onBatch) {
+  const { tokenizer, model } = await loadModel();
+  const out = [];
+  for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+    const batch = texts.slice(i, i + BATCH_SIZE);
+    const inputs = tokenizer(batch.map(normalizeForModel), { padding: true, truncation: true, max_length: MAX_LENGTH });
+    const { logits } = await model(inputs);
+    const n = logits.dims[1];
+    batch.forEach((_, b) => out.push(Array.from(logits.data.slice(b * n, (b + 1) * n), sigmoid)));
+    onBatch && onBatch(Math.min(i + BATCH_SIZE, texts.length), texts.length);
+    await nextFrame();
+  }
+  return out;
+}
+
+async function analyzePolicy(raw, onProgress) {
+  const { thresholds, labels } = await loadModel();
+  const doc = parsePolicy(raw);
+  const toCheck = doc.sentences.filter((s) => s.check);
+  const probs = await runProbs(toCheck.map((s) => s.text), onProgress);
+  toCheck.forEach((s, i) => { s.probs = probs[i]; });
+  const r = { ...doc, toCheck, labels, thresholds, checked: toCheck.length };
+  computeFindings(r);
+  return r;
+}
+
+// Turn the model's probabilities into findings using the tuned cutoffs
+function computeFindings(r) {
+  const cutFor = (name) => r.thresholds[name] ?? 0.5;
+  const findings = [];
+  for (const s of r.sentences) s.finding = null;
+  for (const s of r.toCheck) {
+    const scored = r.labels.map((name, j) => ({ name, j, p: s.probs[j], cut: cutFor(name) }));
+    const hits = scored.filter((c) => c.p >= c.cut && CATEGORIES[c.name]).sort((a, b) => b.p - a.p);
+    if (!hits.length) continue;
+    const primary = hits.reduce((best, c) =>
+      LEVELS[CATEGORIES[c.name].level].rank < LEVELS[CATEGORIES[best.name].level].rank ? c : best, hits[0]);
+    const also = scored
+      .filter((c) => !hits.includes(c) && c.p >= ALSO_MIN && CATEGORIES[c.name])
+      .sort((a, b) => b.p - a.p).map((c) => c.name);
+    const f = {
+      id: s.id, sentence: s.text, labelIndex: primary.j,
+      type: primary.name, level: CATEGORIES[primary.name].level,
+      confidence: primary.p, weak: primary.p < WEAK_BELOW,
+      others: hits.filter((c) => c !== primary).map((c) => c.name),
+      also,
+    };
+    s.finding = f;
+    findings.push(f);
+  }
+  findings.sort((a, b) => LEVELS[a.level].rank - LEVELS[b.level].rank || b.confidence - a.confidence);
+
+  const byLevel = { high: 0, medium: 0, low: 0 };
+  const byType = Object.fromEntries(Object.keys(CATEGORIES).map((k) => [k, 0]));
+  let points = 0;
+  for (const f of findings) {
+    byLevel[f.level] += 1;
+    byType[f.type] += 1;
+    for (const t of f.others) byType[t] += 1;
+    points += LEVELS[f.level].weight;
+  }
+  r.score = r.words ? (points / r.words) * 1000 : 0;
+  r.overall = !findings.length ? "safe" : r.score >= 20 ? "high" : r.score >= 8 ? "medium" : "low";
+  Object.assign(r, { findings, byLevel, byType });
+}
+
+// "Why was this flagged?": remove one word at a time and measure how much
+// the probability of the flagged clause type drops (occlusion).
+async function keyWords(f) {
+  const words = f.sentence.split(/\s+/).filter(Boolean);
+  const variants = words.map((_, i) => words.filter((_, j) => j !== i).join(" "));
+  const probs = await runProbs(variants);
+  const drops = probs.map((p) => f.confidence - p[f.labelIndex]);
+  const maxDrop = Math.max(0, ...drops);
+  const ranked = drops.map((d, i) => ({ i, d })).filter((x) => x.d >= 0.05 && x.d >= maxDrop * 0.25)
+    .sort((a, b) => b.d - a.d).slice(0, 6);
+  const tier = new Map(ranked.map((x) => [x.i, x.d >= maxDrop * 0.66 ? 1 : x.d >= maxDrop * 0.33 ? 2 : 3]));
+  return { words, tier, found: ranked.length > 0 };
+}
+
+// ======================================================================
+// Rendering helpers
+// ======================================================================
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = (p) => Math.round(p * 100) + "%";
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+// Summary card text: the title covers all flagged clauses, whatever their level
+function overallText(r) {
+  const n = r.findings.length;
+  if (!n) return {
+    title: "No risk clauses found",
+    sub: "The model did not flag any sentence. That is not a guarantee, so skim the important sections anyway.",
+    score: "",
+  };
+  const parts = ["high", "medium", "low"].filter((l) => r.byLevel[l]).map((l) => `${r.byLevel[l]} ${l}`);
+  const list = parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0];
+  const levelName = { high: "High", medium: "Medium", low: "Low" }[r.overall];
+  return {
+    title: "Risk clauses",
+    sub: `${plural(n, "clause")} may work against you: ${list} risk.`,
+    score: `Overall level: ${levelName} (${r.score.toFixed(1)} risk points per 1,000 words)`,
+  };
+}
+
+function ringStyle(byLevel, total) {
+  if (!total) return "background: var(--low-line)";
+  const h = (byLevel.high / total) * 100;
+  const m = h + (byLevel.medium / total) * 100;
+  return `background: conic-gradient(var(--high-line) 0 ${h}%, var(--medium-line) ${h}% ${m}%, var(--low-line) ${m}% 100%)`;
+}
+
+function progressHTML(title, detail, value) {
+  return `<div class="progress-box">
+    <h3>${esc(title)}</h3>
+    <p class="hint" id="progressDetail">${esc(detail)}</p>
+    <div class="progress-track"><span id="progressFill" style="width:${value}%"></span></div>
+  </div>`;
+}
+function setProgress(detail, value) {
+  const d = document.getElementById("progressDetail");
+  const f = document.getElementById("progressFill");
+  if (d) d.textContent = detail;
+  if (f) f.style.width = value + "%";
+}
+const loadErrorHTML = (what) => `<div class="empty"><h3>The ${what} could not run</h3>
+  <p>The model did not load. Check your internet connection, then reload the page and try again.</p></div>`;
+
+// ======================================================================
+// Analyze view
+// ======================================================================
+const policyInput = document.getElementById("policyInput");
+const docView = document.getElementById("docView");
+const editBtn = document.getElementById("editBtn");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const reportBody = document.getElementById("reportBody");
+const reportMeta = document.getElementById("reportMeta");
+const formError = document.getElementById("formError");
+const wordCount = document.getElementById("wordCount");
+const sampleBtn = document.getElementById("sampleBtn");
+const sampleList = document.getElementById("sampleList");
+const sampleLabel = document.getElementById("sampleLabel");
+const sampleSource = document.getElementById("sampleSource");
+const emptyReport = reportBody.innerHTML;
+let current = null;
+let activeFilter = "all";
+
+function updateWordCount() {
+  wordCount.textContent = plural(countWords(policyInput.value), "word").replace(/^\d+/, (n) => Number(n).toLocaleString());
+}
+policyInput.addEventListener("input", () => {
+  updateWordCount();
+  formError.textContent = "";
+  sampleSource.hidden = true;
+  markSample("");
+});
+
+function showEditor() {
+  docView.hidden = true;
+  policyInput.hidden = false;
+  editBtn.hidden = true;
+  policyInput.focus();
+}
+editBtn.addEventListener("click", showEditor);
+
+function renderDoc(r) {
+  const paras = r.paragraphs.map((p) => ({ ...p, html: [], levels: new Set() }));
+  for (const s of r.sentences) {
+    const p = paras[s.para];
+    if (s.finding) {
+      const f = s.finding;
+      p.levels.add(f.level);
+      p.html.push(`<button type="button" class="mark mark-${f.level}${f.weak ? " is-weak" : ""}" data-id="${s.id}"
+        aria-label="${esc(LEVELS[f.level].label)}: ${esc(f.type)}. Show details">${esc(s.text)}</button>`);
+    } else {
+      p.html.push(`<span>${esc(s.text)}</span>`);
+    }
+  }
+  docView.innerHTML = paras.map((p) => {
+    if (p.heading) return `<h3>${esc(p.text)}</h3>`;
+    const lvl = ["high", "medium", "low"].find((l) => p.levels.has(l));
+    return `<p class="${lvl ? "has-" + lvl : ""}">${p.html.join(" ")}</p>`;
+  }).join("");
+  policyInput.hidden = true;
+  docView.hidden = false;
+  editBtn.hidden = false;
+  document.getElementById("policyBody").scrollTop = 0;
+}
+
+function cardHTML(f, i) {
+  const extra = [];
+  if (f.others.length) extra.push(`<span class="note">Also flagged as <strong>${esc(f.others.join(", "))}</strong></span>`);
+  if (f.also.length) extra.push(`<span class="note">Possibly also <strong>${esc(f.also.join(", "))}</strong></span>`);
+  return `<div class="card-wrap" data-level="${f.level}"><article class="card level-${f.level}" id="card-${f.id}" data-id="${f.id}" data-level="${f.level}">
+    <span class="card-num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>
+    <div class="card-main">
+      <div class="card-top">
+        <span class="badge ${f.level}">${LEVELS[f.level].label}</span>
+        <span class="confidence" title="How sure the model is about this clause type">
+          Confidence ${pct(f.confidence)}
+          <span class="meter" aria-hidden="true"><span style="width:${pct(f.confidence)}"></span></span>
+        </span>
+      </div>
+      <h3 class="card-type">${esc(f.type)}</h3>
+      <p class="card-explain">${esc(CATEGORIES[f.type].explain)}</p>
+      <blockquote class="card-quote" id="quote-${f.id}">${esc(f.sentence)}</blockquote>
+      <p class="kw-note" id="kwnote-${f.id}" hidden></p>
+      <div class="card-foot">
+        <button type="button" class="text-btn why-btn" data-id="${f.id}" aria-expanded="false" aria-controls="quote-${f.id}">Why was this flagged?</button>
+        ${extra.join("")}
+        <button type="button" class="text-btn show-in-text" data-id="${f.id}">Show in policy</button>
+      </div>
+    </div>
+  </article></div>`;
+}
+
+function renderReport(r) {
+  reportMeta.textContent = `${r.checked} sentences checked`;
+  reportBody.innerHTML = `<div class="report">
+    <div id="overallSlot"></div>
+    <div id="results"></div>
+  </div>`;
+  renderResults(r);
+}
+
+function renderResults(r) {
+  const copy = overallText(r);
+  const counts = r.byLevel;
+  const n = r.findings.length;
+  const filterBtn = (key, label, count, cls = "") =>
+    `<button type="button" class="chip ${cls}" data-filter="${key}" aria-pressed="${activeFilter === key}"${count ? "" : " disabled"}>${label} ${count}</button>`;
+  const ringLabel = n ? `Flagged clauses: ${counts.high} high, ${counts.medium} medium, ${counts.low} low` : "No flagged clauses";
+  if (activeFilter !== "all" && !counts[activeFilter]) activeFilter = "all";
+
+  document.getElementById("overallSlot").innerHTML = `
+    <section class="overall level-${r.overall}" aria-label="Overall result">
+      <div class="ring" role="img" aria-label="${ringLabel}" style="${ringStyle(counts, n)}">
+        <div class="ring-inner"><strong>${n}</strong><span>${n === 1 ? "clause" : "clauses"}</span></div>
+      </div>
+      <div class="overall-text">
+        <p class="overall-level">${esc(copy.title)}</p>
+        <p class="overall-sub">${esc(copy.sub)}</p>
+        ${copy.score ? `<p class="overall-score">${esc(copy.score)}</p>` : ""}
+      </div>
+    </section>`;
+  document.getElementById("results").innerHTML = `
+    ${n ? `
+    <div class="filters" role="group" aria-label="Show only one risk level. Select it again to show all">
+      ${filterBtn("high", "High", counts.high, "high")}
+      ${filterBtn("medium", "Medium", counts.medium, "medium")}
+      ${filterBtn("low", "Low", counts.low, "low")}
+    </div>
+    <div class="cards" id="cards">${r.findings.map((f, i) => cardHTML(f, i)).join("")}</div>` : ""}`;
+  applyFilter();
+}
+
+function applyFilter() {
+  reportBody.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", c.dataset.filter === activeFilter));
+  reportBody.querySelectorAll(".card-wrap").forEach((c) => { c.hidden = activeFilter !== "all" && c.dataset.level !== activeFilter; });
+}
+
+function setActive(id, scrollTarget) {
+  document.querySelectorAll(".mark.is-active, .card.is-active").forEach((el) => el.classList.remove("is-active"));
+  const mark = docView.querySelector(`.mark[data-id="${id}"]`);
+  const card = document.getElementById("card-" + id);
+  mark && mark.classList.add("is-active");
+  if (card) {
+    card.classList.add("is-active");
+    if (card.parentElement.hidden) { activeFilter = "all"; applyFilter(); }
+  }
+  const target = scrollTarget === "card" ? card : mark;
+  target && target.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function toggleKeyWords(btn) {
+  const id = btn.dataset.id;
+  const f = current && current.findings.find((x) => x.id === id);
+  const quote = document.getElementById("quote-" + id);
+  const note = document.getElementById("kwnote-" + id);
+  if (!f || !quote) return;
+  if (btn.getAttribute("aria-expanded") === "true") {
+    quote.textContent = f.sentence;
+    note.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+    btn.textContent = "Why was this flagged?";
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Finding key words…";
+  try {
+    if (!f.keyWords) f.keyWords = await keyWords(f);
+    const { words, tier, found } = f.keyWords;
+    quote.innerHTML = words.map((w, i) => tier.has(i)
+      ? `<mark class="kw kw-${tier.get(i)} ${f.level}">${esc(w)}</mark>` : esc(w)).join(" ");
+    note.textContent = found
+      ? "Highlighted words changed the model's decision the most. Darker means a bigger effect."
+      : "No single word stands out. The model relied on the sentence as a whole.";
+    note.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    btn.textContent = "Hide key words";
+  } catch (err) {
+    console.error(err);
+    btn.textContent = "Why was this flagged?";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+docView.addEventListener("click", (e) => {
+  const m = e.target.closest(".mark");
+  if (m) setActive(m.dataset.id, "card");
+});
+reportBody.addEventListener("click", (e) => {
+  const chip = e.target.closest(".chip");
+  if (chip) { activeFilter = activeFilter === chip.dataset.filter ? "all" : chip.dataset.filter; applyFilter(); return; }
+  const why = e.target.closest(".why-btn");
+  if (why) { toggleKeyWords(why); return; }
+  const show = e.target.closest(".show-in-text");
+  if (show) setActive(show.dataset.id, "mark");
+});
+
+analyzeBtn.addEventListener("click", async () => {
+  const text = policyInput.hidden ? (current ? current.raw : "") : policyInput.value;
+  if (countWords(text) < 8) {
+    formError.textContent = "Paste a longer policy first.";
+    showEditor();
+    return;
+  }
+  formError.textContent = "";
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = "Analyzing…";
+  activeFilter = "all";
+  const ready = statusEl.dataset.state === "ready";
+  reportBody.innerHTML = progressHTML(ready ? "Reading the policy" : "Downloading the model",
+    ready ? "Starting…" : "This happens only on your first visit.", 0);
+  progressListener = (p) => setProgress(`Downloaded ${p}%`, p);
+  try {
+    const r = await analyzePolicy(text, (done, total) => {
+      progressListener = null;
+      setProgress(`Checked ${done} of ${total} sentences`, Math.round((done / total) * 100));
+    });
+    r.raw = text;
+    current = r;
+    renderDoc(r);
+    renderReport(r);
+  } catch (err) {
+    console.error(err);
+    reportBody.innerHTML = loadErrorHTML("analysis");
+  } finally {
+    progressListener = null;
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = "Analyze policy";
+  }
+});
+
+document.getElementById("clearBtn").addEventListener("click", () => {
+  policyInput.value = "";
+  current = null;
+  sampleSource.hidden = true;
+  markSample("");
+  updateWordCount();
+  reportBody.innerHTML = emptyReport;
+  reportMeta.textContent = "";
+  showEditor();
+});
+
+// ======================================================================
+// Sample policies
+// Real platforms: selected sentences quoted from their published terms.
+// Northwind Stream and Lumen Notes are fictional.
+// ======================================================================
+const SAMPLE_A = `Northwind Stream Terms of Service
+
+Acceptance of terms
+Welcome to Northwind Stream. These Terms govern your use of our website, apps and streaming service. By accessing or using the Service, you agree to be bound by these Terms, even if you do not create an account. We may modify these Terms at any time, and your continued use of the Service after any change means you accept the new Terms.
+
+Your account
+You are responsible for keeping your password secure and for all activity under your account. We may suspend or terminate your account at any time, for any or no reason, with or without notice.
+
+Your content
+You keep ownership of the content you upload to the Service. We may remove any content you upload if we believe it violates these Terms, without prior notice to you.
+
+Liability
+To the fullest extent permitted by law, Northwind Stream is not liable for any indirect, incidental or consequential damages, including loss of data or profits.
+
+Disputes
+These Terms are governed by the laws of the State of Delaware, without regard to its conflict of law rules. Any dispute not subject to arbitration must be brought exclusively in the courts located in Wilmington, Delaware. You and Northwind Stream agree to resolve any dispute through final and binding arbitration, and you waive your right to participate in a class action.
+
+Contact
+If you have questions about these Terms, please contact our support team through the Help Center.`;
+
+const SAMPLE_B = `Lumen Notes Terms of Use
+
+Using Lumen Notes
+These Terms explain how you can use Lumen Notes. Please read them before you create an account, and tick the box to accept them.
+
+Changes to these terms
+If we plan to change these Terms, we will email you at least 30 days in advance, and you can close your account and export your notes before the change takes effect.
+
+Your notes
+Your notes belong to you. We only access them to provide the service or when you ask our support team for help.
+
+Closing your account
+You can close your account at any time from the settings page. If we ever need to close an account for a serious breach, we will explain the reason and give you time to download your data.
+
+Disputes
+If a dispute arises, please contact us first so we can try to resolve it. You may also bring a claim in the courts of the country where you live.`;
+
+const SAMPLE_TIKTOK = `TikTok Terms of Service (United States)
+
+Agreement
+You form a contract with us when you accept these Terms or when you otherwise use or access the Platform.
+
+Your account
+If you are under 13 years of age, you may not use the Platform, unless you are using the separate Under 13 Experience. Do not give others access to your account, or transfer your account to anyone else, without our permission.
+
+Changes to the Terms
+We may make changes to these Terms from time to time. If you continue to use the Platform after any updated Terms are in effect, you agree to be bound by the updated Terms. The “Last Updated” date will reflect the effective date of the Terms.
+
+Content
+Our Community Guidelines further describe why content might be removed or restricted on the Platform. Users and others are solely responsible for their content and use of the Platform.
+
+Liability
+The Platform is provided “as is.”
+
+Disputes
+Engaging in this informal dispute resolution process is a requirement that must be completed before filing any legal action. You also agree to submit to the personal jurisdiction of either of these courts for the purpose of litigating any such claim.`;
+
+const SAMPLE_SPOTIFY = `Spotify Terms of Use (United States)
+
+Agreement
+By signing up for, or otherwise using, the Spotify Service, you agree to these Terms. If you do not agree to these Terms, then you must not use the Spotify Service or access any Content.
+
+Your account
+If you do not meet the minimum age requirements then you must not register as a user. Your username and password are for your personal use only and should be kept confidential.
+
+Changes to these Terms
+Your use of the Spotify Service following any changes to these Terms will constitute your acceptance of such changes. These Terms will continue to apply to you until terminated by either you or Spotify.
+
+User Content
+Spotify reserves the right to remove or disable access to any User Content for any or no reason. Spotify may take these actions without prior notification to you. Spotify is not responsible for what you or others post or share on the Spotify Service.
+
+Disputes
+Either you or Spotify may start arbitration proceedings. THERE IS NO JUDGE OR JURY IN ARBITRATION, AND COURT REVIEW OF AN ARBITRATION AWARD IS LIMITED. To the fullest extent permitted by applicable law, the parties agree to waive any right to a jury trial.
+
+Contact
+Notices to Spotify must be sent by email to tounotice@spotify.com.`;
+
+const SAMPLE_NETFLIX = `Netflix Terms of Use
+
+Agreement
+You have accepted these Terms of Use, which govern your use of our service. We may, from time to time, change these Terms of Use.
+
+Membership and billing
+Your Netflix subscription will continue and automatically renew until terminated. You can cancel your Netflix subscription at any time. The cancellation will take effect at the end of the billing period. We may change our subscription plans and the price of our service from time to time.
+
+The Netflix service
+The Netflix service, including the Netflix content, is regularly updated. We do not guarantee that particular content will be available on the Netflix service at any given time. You are responsible for any activity that occurs through the Netflix account.
+
+Warranties
+NETFLIX DOES NOT GUARANTEE, REPRESENT, OR WARRANT THAT YOUR USE OF THE NETFLIX SERVICE WILL BE UNINTERRUPTED OR ERROR-FREE. NOTHING IN THESE TERMS OF USE SHALL AFFECT ANY NON-WAIVABLE STATUTORY RIGHTS THAT APPLY TO YOU.
+
+Arbitration
+THIS MEANS THAT YOU WILL NOT BE ABLE TO HAVE A JUDGE OR JURY DECIDE THE DISPUTE. THE ARBITRATION PROCEEDINGS IN THIS SECTION WILL BE CONDUCTED ON AN INDIVIDUAL BASIS ONLY. YOU HAVE A TIME-LIMITED RIGHT TO OPT OUT OF THIS REQUIREMENT TO ARBITRATE DISPUTES, AS EXPLAINED BELOW.`;
+
+const SAMPLES = {
+  tiktok:    { text: SAMPLE_TIKTOK,  source: "Selected sentences from TikTok’s U.S. Terms of Service (version dated January 22, 2026).", url: "https://www.tiktok.com/legal/page/us/terms-of-service/en" },
+  spotify:   { text: SAMPLE_SPOTIFY, source: "Selected sentences from Spotify’s U.S. Terms of Use (last updated September 4, 2026).", url: "https://www.spotify.com/us/legal/end-user-agreement/" },
+  netflix:   { text: SAMPLE_NETFLIX, source: "Selected sentences from Netflix’s Terms of Use (last updated April 10, 2026).", url: "https://help.netflix.com/legal/termsofuse" },
+  northwind: { text: SAMPLE_A,       source: "A fictional policy written to show every clause type." },
+};
+
+// Custom sample menu: placeholder text on the button, white rounded list
+const sampleOptions = [...sampleList.querySelectorAll('[role="option"]')];
+let activeOption = -1;
+
+function markSample(value) {
+  sampleOptions.forEach((o) => o.setAttribute("aria-selected", o.dataset.value === value));
+  const chosen = sampleOptions.find((o) => o.dataset.value === value);
+  sampleLabel.textContent = chosen ? chosen.textContent : "Try a sample policy";
+}
+function setActiveOption(i) {
+  activeOption = i;
+  sampleOptions.forEach((o, j) => o.classList.toggle("is-active", j === i));
+  if (i >= 0) sampleList.setAttribute("aria-activedescendant", sampleOptions[i].id);
+  else sampleList.removeAttribute("aria-activedescendant");
+}
+function openSamples() {
+  sampleList.hidden = false;
+  sampleBtn.setAttribute("aria-expanded", "true");
+  const sel = sampleOptions.findIndex((o) => o.getAttribute("aria-selected") === "true");
+  setActiveOption(sel >= 0 ? sel : 0);
+  sampleList.focus();
+}
+function closeSamples(returnFocus = true) {
+  if (sampleList.hidden) return;
+  sampleList.hidden = true;
+  sampleBtn.setAttribute("aria-expanded", "false");
+  setActiveOption(-1);
+  if (returnFocus) sampleBtn.focus();
+}
+sampleBtn.addEventListener("click", () => (sampleList.hidden ? openSamples() : closeSamples()));
+sampleBtn.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); openSamples(); }
+});
+sampleList.addEventListener("keydown", (e) => {
+  const last = sampleOptions.length - 1;
+  if (e.key === "ArrowDown") { e.preventDefault(); setActiveOption(Math.min(last, activeOption + 1)); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); setActiveOption(Math.max(0, activeOption - 1)); }
+  else if (e.key === "Home") { e.preventDefault(); setActiveOption(0); }
+  else if (e.key === "End") { e.preventDefault(); setActiveOption(last); }
+  else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (activeOption >= 0) loadSample(sampleOptions[activeOption].dataset.value); }
+  else if (e.key === "Escape") { e.preventDefault(); closeSamples(); }
+  else if (e.key === "Tab") { closeSamples(false); }
+});
+sampleList.addEventListener("mousemove", (e) => {
+  const o = e.target.closest('[role="option"]');
+  if (o) setActiveOption(sampleOptions.indexOf(o));
+});
+sampleList.addEventListener("click", (e) => {
+  const o = e.target.closest('[role="option"]');
+  if (o) loadSample(o.dataset.value);
+});
+document.addEventListener("click", (e) => {
+  if (!document.getElementById("samplePicker").contains(e.target)) closeSamples(false);
+});
+
+function loadSample(value) {
+  const s = SAMPLES[value];
+  if (!s) return;
+  closeSamples();
+  showEditor();
+  policyInput.value = s.text;
+  updateWordCount();
+  formError.textContent = "";
+  sampleSource.innerHTML = esc(s.source) + (s.url
+    ? ` Headings were added for easier reading, and wording may differ from the current version. <a href="${s.url}" target="_blank" rel="noopener">Read the full terms</a>`
+    : "");
+  sampleSource.hidden = false;
+  markSample(value);
+}
+
+// ======================================================================
+// Compare view
+// ======================================================================
+const inputA = document.getElementById("inputA"), inputB = document.getElementById("inputB");
+const nameA = document.getElementById("nameA"), nameB = document.getElementById("nameB");
+const compareBtn = document.getElementById("compareBtn");
+const compareBody = document.getElementById("compareBody");
+const compareError = document.getElementById("compareError");
+
+function bindCount(input, el) {
+  input.addEventListener("input", () => {
+    el.textContent = plural(countWords(input.value), "word");
+    compareError.textContent = "";
+  });
+}
+bindCount(inputA, document.getElementById("wordCountA"));
+bindCount(inputB, document.getElementById("wordCountB"));
+
+document.getElementById("compareSampleBtn").addEventListener("click", () => {
+  nameA.value = "Northwind Stream"; inputA.value = SAMPLE_A;
+  nameB.value = "Lumen Notes"; inputB.value = SAMPLE_B;
+  inputA.dispatchEvent(new Event("input"));
+  inputB.dispatchEvent(new Event("input"));
+});
+
+function renderCompare(a, b, na, nb) {
+  const row = (label, va, vb, fmt = (v) => v, dot = "") =>
+    `<tr><th scope="row">${dot ? `<span class="type-cell"><span class="dot ${dot}" aria-hidden="true"></span>${esc(label)}</span>` : esc(label)}</th>
+      <td class="num${va > vb ? " worse" : ""}">${fmt(va)}</td>
+      <td class="num${vb > va ? " worse" : ""}">${fmt(vb)}</td></tr>`;
+  const levelName = { high: "High risk", medium: "Medium risk", low: "Low risk", safe: "No unfair clauses" };
+  let verdict;
+  if (Math.abs(a.score - b.score) < 1 && a.byLevel.high === b.byLevel.high) {
+    verdict = `${na} and ${nb} carry a similar level of risk.`;
+  } else {
+    const [worse, better] = a.score > b.score ? [na, nb] : [nb, na];
+    verdict = `${worse} asks more of you than ${better}.`;
+  }
+  const tile = (name, r) => `<div class="summary-tile level-${r.overall}">
+      <span class="name">${esc(name)}</span>
+      <span class="lvl">${levelName[r.overall]}</span>
+      <span class="sub">${plural(r.findings.length, "clause")}, ${r.score.toFixed(1)} points</span>
+    </div>`;
+  compareBody.innerHTML = `<div class="report">
+    <p class="verdict">${esc(verdict)}</p>
+    <div class="summary-pair">${tile(na, a)}${tile(nb, b)}</div>
+    <div class="table-wrap">
+    <table class="compare-table">
+      <thead><tr><th scope="col">Measure</th><th scope="col" class="num">${esc(na)}</th><th scope="col" class="num">${esc(nb)}</th></tr></thead>
+      <tbody>
+        ${row("Risk points per 1,000 words", a.score, b.score, (v) => v.toFixed(1))}
+        ${row("Flagged clauses", a.findings.length, b.findings.length)}
+        ${row("High risk", a.byLevel.high, b.byLevel.high, undefined, "high")}
+        ${row("Medium risk", a.byLevel.medium, b.byLevel.medium, undefined, "medium")}
+        ${row("Low risk", a.byLevel.low, b.byLevel.low, undefined, "low")}
+        <tr class="group"><th scope="rowgroup" colspan="3">By clause type</th></tr>
+        ${TYPES_BY_LEVEL.map((t) => row(t, a.byType[t], b.byType[t], undefined, CATEGORIES[t].level)).join("")}
+      </tbody>
+    </table>
+    </div>
+    <p class="hint">The higher value in each row is shown in red. Open a policy in Analyze to read each clause.</p>
+  </div>`;
+}
+
+compareBtn.addEventListener("click", async () => {
+  if (countWords(inputA.value) < 8 || countWords(inputB.value) < 8) {
+    compareError.textContent = "Paste both policies first.";
+    return;
+  }
+  compareError.textContent = "";
+  const na = nameA.value.trim() || "Policy A";
+  const nb = nameB.value.trim() || "Policy B";
+  compareBtn.disabled = true;
+  compareBtn.textContent = "Comparing…";
+  const ready = statusEl.dataset.state === "ready";
+  compareBody.innerHTML = progressHTML(ready ? `Reading ${na}` : "Downloading the model",
+    ready ? "Starting…" : "This happens only on your first visit.", 0);
+  progressListener = (p) => setProgress(`Downloaded ${p}%`, p);
+  try {
+    const a = await analyzePolicy(inputA.value, (d, t) => {
+      progressListener = null;
+      setProgress(`${na}: checked ${d} of ${t} sentences`, Math.round((d / t) * 50));
+    });
+    const b = await analyzePolicy(inputB.value, (d, t) =>
+      setProgress(`${nb}: checked ${d} of ${t} sentences`, 50 + Math.round((d / t) * 50)));
+    renderCompare(a, b, na, nb);
+  } catch (err) {
+    compareBody.innerHTML = loadErrorHTML("comparison");
+  } finally {
+    progressListener = null;
+    compareBtn.disabled = false;
+    compareBtn.textContent = "Compare policies";
+  }
+});
+
+// ======================================================================
+// Tabs and dialog
+// ======================================================================
+const tabs = { tabAnalyze: "analyzeView", tabCompare: "compareView" };
+for (const [tabId, viewId] of Object.entries(tabs)) {
+  document.getElementById(tabId).addEventListener("click", () => {
+    for (const [t, v] of Object.entries(tabs)) {
+      document.getElementById(t).setAttribute("aria-selected", t === tabId);
+      document.getElementById(v).hidden = v !== viewId;
+    }
+  });
+}
+const aboutDialog = document.getElementById("aboutDialog");
+document.getElementById("aboutBtn").addEventListener("click", () => aboutDialog.showModal());
+document.getElementById("aboutClose").addEventListener("click", () => aboutDialog.close());
+aboutDialog.addEventListener("click", (e) => { if (e.target === aboutDialog) aboutDialog.close(); });
+
+updateWordCount();
+</script>
+</body>
+</html>
